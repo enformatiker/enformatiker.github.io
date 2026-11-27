@@ -10,6 +10,6 @@
  */
 window.HAR_SITE_CONFIG = {
   siteName: "HAR Watch",
-  apiBase: "https://har-control.YOUR_SUBDOMAIN.workers.dev",
+  apiBase: "https://har-control.enformatiker.workers.dev",
   supportEmail: "enformatiker@gmail.com",
 };
