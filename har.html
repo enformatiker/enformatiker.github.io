@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAR Watch - Otomasyon Kur</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .har-wrap { max-width: 760px; margin: 40px auto; padding: 0 20px; }
+        .har-card { background:#fff; border:1px solid #e6e6e6; border-radius:12px; padding:28px; box-shadow:0 4px 14px rgba(0,0,0,.05); }
+        .har-card h2 { margin-top:0; color:#2c3e50; }
+        .har-sub { color:#7f8c8d; margin-top:-8px; line-height:1.5; }
+        .field { margin-bottom:18px; }
+        .field label { display:block; font-weight:600; margin-bottom:6px; color:#34495e; }
+        .field input, .field select {
+            width:100%; box-sizing:border-box; padding:12px 14px; font-size:15px;
+            border:1px solid #dcdde1; border-radius:8px; background:#fbfcfd;
+        }
+        .field input:focus, .field select:focus { outline:2px solid #007bff33; border-color:#007bff; }
+        .row { display:flex; gap:16px; }
+        .row .field { flex:1; }
+        button.submit {
+            background:#007bff; color:#fff; border:0; border-radius:8px;
+            padding:14px 26px; font-size:16px; font-weight:700; cursor:pointer;
+        }
+        button.submit:disabled { opacity:.6; cursor:wait; }
+        button.submit:hover:not(:disabled) { background:#0056b3; }
+        .status { margin-top:18px; padding:14px; border-radius:8px; display:none; line-height:1.5; }
+        .status.ok { display:block; background:#eaf7ef; color:#1e7e43; border:1px solid #bfe6cd; }
+        .status.err { display:block; background:#fdecec; color:#b42318; border:1px solid #f5c2c2; }
+        .har-note { font-size:13px; color:#7f8c8d; line-height:1.6; margin-top:20px; }
+        details.advanced { margin-top:22px; font-size:13px; color:#7f8c8d; }
+        details.advanced summary { cursor:pointer; font-weight:600; }
+        details.advanced .field { margin-top:14px; }
+        details.advanced button { padding:9px 16px; border:1px solid #dcdde1; background:#fff; border-radius:6px; cursor:pointer; }
+        table.har-list { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+        table.har-list th, table.har-list td { padding:9px; border-bottom:1px solid #ecf0f1; text-align:left; }
+        table.har-list th { color:#7f8c8d; font-size:12px; text-transform:uppercase; }
+        .badge { display:inline-block; padding:2px 8px; border-radius:10px; background:#eaf2ff; color:#0056b3; font-size:12px; font-weight:700; }
+        .badge.sale { background:#fff1e8; color:#c05621; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo" id="siteLogo">HAR Watch</div>
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="har.html">HAR Watch</a>
+            <a href="support.html">Support</a>
+            <a href="privacy.html">Privacy</a>
+        </nav>
+    </header>
+
+    <main class="har-wrap">
+        <div class="har-card">
+            <h2>HAR İlan Takibi</h2>
+            <p class="har-sub">ZIP kodu ve modu seç; otomasyon kurulsun, ilk rapor hemen, sonrasında günde 4 kez e-posta gelsin.</p>
+
+            <form id="harForm">
+                <div class="row">
+                    <div class="field">
+                        <label for="zip">ZIP kodu</label>
+                        <input id="zip" name="zip" type="text" value="77304" placeholder="örn. 78626" required>
+                    </div>
+                    <div class="field">
+                        <label for="mode">İlan tipi</label>
+                        <select id="mode" name="mode">
+                            <option value="rent">Kiralık (rent)</option>
+                            <option value="sale">Satılık (sale)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="email">E-posta</label>
+                    <input id="email" name="email" type="email" value="enformatiker@gmail.com" required>
+                </div>
+                <div class="field">
+                    <label for="accessCode">Erişim kodu (demo)</label>
+                    <input id="accessCode" name="accessCode" type="password" placeholder="Worker'da ACCESS_CODE varsa gir">
+                </div>
+                <button class="submit" id="submitBtn" type="submit">Otomasyonu kur ve test maili gönder</button>
+            </form>
+
+            <div id="status" class="status"></div>
+
+            <details class="advanced">
+                <summary>Gelişmiş: API adresi (domain değişince)</summary>
+                <div class="field">
+                    <label for="apiBaseInput">Worker adresi</label>
+                    <input id="apiBaseInput" type="text" placeholder="https://api.ornek.com veya boş (aynı origin)">
+                    <button type="button" id="saveApi">Tarayıcıya kaydet</button>
+                </div>
+                Kalıcı ayar için <code>site.config.js</code> dosyasını düzenle; detaylar <code>DOMAIN-SETUP.md</code> içinde.
+            </details>
+
+            <p class="har-note" id="harNote">
+                Demo sürümde gönderen ve varsayılan alıcı <strong>enformatiker@gmail.com</strong>'dur.
+                Aynı ZIP/mod için tekrar gönderirsen kayıt güncellenir, yeni bir otomasyon eklenmez.
+                Rapor; kalkan ilanlar, fiyat/değişiklikler, Active → Under Contract, kategori bazında tüm ilanlar ve fotoğrafları içerir.
+            </p>
+        </div>
+
+        <div class="har-card" style="margin-top:20px">
+            <h2 style="font-size:18px">Kurulu otomasyonlar</h2>
+            <table class="har-list">
+                <thead><tr><th>ZIP</th><th>Mod</th><th>E-posta</th><th>Durum</th></tr></thead>
+                <tbody id="automationRows">
+                    <tr><td>77304</td><td><span class="badge">Kiralık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
+                    <tr><td>78626</td><td><span class="badge">Kiralık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
+                    <tr><td>77304</td><td><span class="badge sale">Satılık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
+                    <tr><td>78626</td><td><span class="badge sale">Satılık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer>
+        <p id="siteFooter">&copy; 2025 PomoAI. All rights reserved.</p>
+    </footer>
+
+    <script src="site.config.js"></script>
+    <script>
+        // Tek kaynak: site.config.js. ?worker= veya tarayıcıya kaydedilen adres bunu ezebilir (test için).
+        const cfg = window.HAR_SITE_CONFIG || {};
+        const params = new URLSearchParams(location.search);
+        const rawBase = params.get("worker") || localStorage.getItem("har_api_base") || cfg.apiBase || "";
+        const isPlaceholder = rawBase.indexOf("YOUR_SUBDOMAIN") !== -1;
+        let apiReady = !isPlaceholder; // boş apiBase = aynı origin (/api/* route'u), o da geçerli
+        let apiBase = rawBase.replace(/\/$/, "");
+
+        if (cfg.siteName) {
+            document.getElementById("siteLogo").textContent = cfg.siteName;
+            document.title = cfg.siteName + " - Otomasyon Kur";
+        }
+        if (cfg.supportEmail) {
+            document.getElementById("harNote").innerHTML =
+                document.getElementById("harNote").innerHTML.replace(
+                    "enformatiker@gmail.com",
+                    cfg.supportEmail
+                );
+        }
+        document.getElementById("siteFooter").textContent =
+            "© " + new Date().getFullYear() + " " + (cfg.siteName || "HAR Watch") + ". Tüm hakları saklıdır.";
+
+        const apiInput = document.getElementById("apiBaseInput");
+        apiInput.value = isPlaceholder ? "" : apiBase;
+        document.getElementById("saveApi").addEventListener("click", () => {
+            apiBase = apiInput.value.trim().replace(/\/$/, "");
+            apiReady = true;
+            localStorage.setItem("har_api_base", apiBase);
+            showStatus("ok", "API adresi kaydedildi: " + (apiBase || "aynı origin"));
+            loadAutomations();
+        });
+
+        const form = document.getElementById("harForm");
+        const button = document.getElementById("submitBtn");
+        const statusBox = document.getElementById("status");
+
+        function showStatus(kind, text) {
+            statusBox.className = "status " + kind;
+            statusBox.textContent = text;
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!apiReady) {
+                showStatus("err", "API adresi ayarlanmadı. Worker'ı deploy edip adresi Gelişmiş bölümüne gir veya site.config.js dosyasını düzenle.");
+                return;
+            }
+            showStatus("", "Otomasyon kuruluyor...");
+            button.disabled = true;
+
+            const payload = {
+                zip: document.getElementById("zip").value.trim(),
+                mode: document.getElementById("mode").value,
+                email: document.getElementById("email").value.trim()
+            };
+            const accessCode = document.getElementById("accessCode").value.trim();
+            const headers = { "Content-Type": "application/json" };
+            if (accessCode) headers["x-access-code"] = accessCode;
+
+            try {
+                const response = await fetch(apiBase + "/api/automations", {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || "HTTP " + response.status);
+                }
+                showStatus("ok", data.message + (data.dispatched ? " İlk mail birkaç saniye içinde gelir." : " Not: " + data.warning));
+                loadAutomations();
+            } catch (error) {
+                showStatus("err", "Kurulamadı: " + error.message + " (API adresi doğru mu?)");
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        async function loadAutomations() {
+            if (!apiReady) return; // demo: statik tabloyu göster
+            try {
+                const response = await fetch(apiBase + "/api/automations");
+                const data = await response.json();
+                if (!response.ok || !data.ok || !Array.isArray(data.automations)) return;
+                const rows = data.automations
+                    .filter((item) => item.active !== false)
+                    .map((item) => {
+                        const sale = item.mode === "sale";
+                        const tr = document.createElement("tr");
+                        const cells = [
+                            String(item.zip),
+                            "",
+                            String(item.email || ""),
+                            "Aktif"
+                        ];
+                        cells.forEach((value, index) => {
+                            const td = document.createElement("td");
+                            if (index === 1) {
+                                const badge = document.createElement("span");
+                                badge.className = "badge" + (sale ? " sale" : "");
+                                badge.textContent = sale ? "Satılık" : "Kiralık";
+                                td.appendChild(badge);
+                            } else {
+                                td.textContent = value;
+                            }
+                            tr.appendChild(td);
+                        });
+                        return tr;
+                    });
+                if (rows.length) {
+                    const body = document.getElementById("automationRows");
+                    body.textContent = "";
+                    rows.forEach((row) => body.appendChild(row));
+                }
+            } catch (error) {
+                // Worker henüz yoksa statik liste kalır; sessizce geç.
+            }
+        }
+
+        loadAutomations();
+    </script>
+</body>
+</html>
