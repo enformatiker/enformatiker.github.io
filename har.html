@@ -30,7 +30,6 @@
         .status { margin-top:18px; padding:14px; border-radius:8px; display:none; line-height:1.5; }
         .status.ok { display:block; background:#eaf7ef; color:#1e7e43; border:1px solid #bfe6cd; }
         .status.err { display:block; background:#fdecec; color:#b42318; border:1px solid #f5c2c2; }
-        .har-note { font-size:13px; color:#7f8c8d; line-height:1.6; margin-top:20px; }
         table.har-list { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
         table.har-list th, table.har-list td { padding:9px; border-bottom:1px solid #ecf0f1; text-align:left; }
         table.har-list th { color:#7f8c8d; font-size:12px; text-transform:uppercase; }
@@ -61,11 +60,12 @@
                 <div class="row">
                     <div class="field">
                         <label for="zip">ZIP kodu</label>
-                        <input id="zip" name="zip" type="text" value="77304" placeholder="örn. 78626" inputmode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" required>
+                        <input id="zip" name="zip" type="text" placeholder="örn. 77304" inputmode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" required>
                     </div>
                     <div class="field">
                         <label for="mode">İlan tipi</label>
-                        <select id="mode" name="mode">
+                        <select id="mode" name="mode" required>
+                            <option value="" selected disabled>İlan tipi seçin</option>
                             <option value="rent">Kiralık (rent)</option>
                             <option value="sale">Satılık (sale)</option>
                         </select>
@@ -73,7 +73,7 @@
                 </div>
                 <div class="field">
                     <label for="email">E-posta</label>
-                    <input id="email" name="email" type="email" value="enformatiker@gmail.com" required>
+                    <input id="email" name="email" type="email" placeholder="ornek@eposta.com" required>
                 </div>
                 <div class="field">
                     <label for="accessCode">Erişim kodu (zorunlu)</label>
@@ -84,7 +84,6 @@
             </form>
 
             <div id="status" class="status"></div>
-            <p class="har-note" id="harNote"></p>
         </div>
 
         <div class="har-card" style="margin-top:20px">
@@ -114,12 +113,6 @@
             document.getElementById("siteLogo").textContent = cfg.siteName;
             document.title = cfg.siteName + " - Otomasyon Kur";
         }
-        document.getElementById("harNote").textContent =
-            "Gönderen ve alıcı: " + (cfg.supportEmail || "enformatiker@gmail.com") + ". " +
-            "Aynı ZIP/mod için tekrar gönderirsen kayıt güncellenir, yeni otomasyon eklenmez; " +
-            "1 dakika içinde tekrar gönderim kabul edilmez. Listedeki Kaldır butonu otomasyonu durdurur; " +
-            "yeniden kurmak için formu kullanın. Rapor; kalkan ilanlar, fiyat/değişiklikler, " +
-            "Active → Under Contract, kategori bazında tüm ilanlar ve fotoğrafları içerir.";
         document.getElementById("siteFooter").textContent =
             "© " + new Date().getFullYear() + " " + (cfg.siteName || "HAR Watch") + ". Tüm hakları saklıdır.";
 
@@ -162,14 +155,20 @@
                 showStatus("err", "ZIP kodu 5 haneli olmalı (örn. 77304).");
                 return;
             }
+            const mode = document.getElementById("mode").value;
+            if (mode !== "rent" && mode !== "sale") {
+                showStatus("err", "İlan tipi seçin.");
+                return;
+            }
+            const email = document.getElementById("email").value.trim();
+            if (!email) {
+                showStatus("err", "E-posta adresi girin.");
+                return;
+            }
             showStatus("", "Otomasyon kuruluyor...");
             button.disabled = true;
 
-            const payload = {
-                zip: zip,
-                mode: document.getElementById("mode").value,
-                email: document.getElementById("email").value.trim()
-            };
+            const payload = { zip: zip, mode: mode, email: email };
             try {
                 const response = await fetch(apiBase + "/api/automations", {
                     method: "POST",
