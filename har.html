@@ -36,6 +36,9 @@
         table.har-list th { color:#7f8c8d; font-size:12px; text-transform:uppercase; }
         .badge { display:inline-block; padding:2px 8px; border-radius:10px; background:#eaf2ff; color:#0056b3; font-size:12px; font-weight:700; }
         .badge.sale { background:#fff1e8; color:#c05621; }
+        button.btn-remove { padding:6px 12px; font-size:12px; font-weight:600; color:#b42318; background:#fff; border:1px solid #f5c2c2; border-radius:6px; cursor:pointer; }
+        button.btn-remove:hover { background:#fdecec; }
+        button.btn-remove:disabled { opacity:.6; cursor:wait; }
     </style>
 </head>
 <body>
@@ -87,9 +90,9 @@
         <div class="har-card" style="margin-top:20px">
             <h2 style="font-size:18px">Kurulu otomasyonlar</h2>
             <table class="har-list">
-                <thead><tr><th>ZIP</th><th>Mod</th><th>E-posta</th><th>Durum</th></tr></thead>
+                <thead><tr><th>ZIP</th><th>Mod</th><th>E-posta</th><th>Durum</th><th>İşlem</th></tr></thead>
                 <tbody id="automationRows">
-                    <tr><td colspan="4">Listeyi görmek için erişim kodu girin.</td></tr>
+                    <tr><td colspan="5">Listeyi görmek için erişim kodu girin.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -114,7 +117,8 @@
         document.getElementById("harNote").textContent =
             "Gönderen ve alıcı: " + (cfg.supportEmail || "enformatiker@gmail.com") + ". " +
             "Aynı ZIP/mod için tekrar gönderirsen kayıt güncellenir, yeni otomasyon eklenmez; " +
-            "1 dakika içinde tekrar gönderim kabul edilmez. Rapor; kalkan ilanlar, fiyat/değişiklikler, " +
+            "1 dakika içinde tekrar gönderim kabul edilmez. Listedeki Kaldır butonu otomasyonu durdurur; " +
+            "yeniden kurmak için formu kullanın. Rapor; kalkan ilanlar, fiyat/değişiklikler, " +
             "Active → Under Contract, kategori bazında tüm ilanlar ve fotoğrafları içerir.";
         document.getElementById("siteFooter").textContent =
             "© " + new Date().getFullYear() + " " + (cfg.siteName || "HAR Watch") + ". Tüm hakları saklıdır.";
@@ -187,6 +191,38 @@
             }
         });
 
+        async function removeAutomation(buttonEl, item) {
+            if (!accessCode()) {
+                showStatus("err", "Kaldırmak için erişim kodu gerekli.");
+                return;
+            }
+            const label = `${item.zip} ${item.mode === "sale" ? "satılık" : "kiralık"}`;
+            if (!window.confirm(label + " otomasyonunu listeden kaldırmak istediğinize emin misiniz?")) return;
+            buttonEl.disabled = true;
+            try {
+                const response = await fetch(apiBase + "/api/automations", {
+                    method: "POST",
+                    headers: authHeaders(true),
+                    body: JSON.stringify({
+                        zip: String(item.zip),
+                        mode: item.mode,
+                        email: String(item.email || ""),
+                        action: "remove"
+                    }),
+                    cache: "no-store"
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    throw new Error(String(data.error || "HTTP " + response.status).slice(0, 200));
+                }
+                showStatus("ok", data.message);
+                loadAutomations();
+            } catch (error) {
+                showStatus("err", "Kaldırılamadı: " + error.message);
+                buttonEl.disabled = false;
+            }
+        }
+
         async function loadAutomations() {
             if (!apiReady || !accessCode()) return; // kodsuz liste isteği yapılmaz
             try {
@@ -205,7 +241,8 @@
                             String(item.zip),
                             "",
                             String(item.email || ""),
-                            "Aktif"
+                            "Aktif",
+                            ""
                         ];
                         cells.forEach((value, index) => {
                             const td = document.createElement("td");
@@ -214,6 +251,13 @@
                                 badge.className = "badge" + (sale ? " sale" : "");
                                 badge.textContent = sale ? "Satılık" : "Kiralık";
                                 td.appendChild(badge);
+                            } else if (index === 4) {
+                                const removeBtn = document.createElement("button");
+                                removeBtn.type = "button";
+                                removeBtn.className = "btn-remove";
+                                removeBtn.textContent = "Kaldır";
+                                removeBtn.addEventListener("click", () => removeAutomation(removeBtn, item));
+                                td.appendChild(removeBtn);
                             } else {
                                 td.textContent = value;
                             }

@@ -107,8 +107,8 @@ Hiçbiri `har.html` dosyasının gövdesini değiştirmez — sadece `site.confi
 | Actions state commit | Postgres/KV'de son ilan hash'i |
 | Statik form | Dashboard + Stripe ödeme + kullanım kotası |
 
-Formun gönderdiği alanlar (`zip`, `mode`, `email`) ve yanıt biçimi (`ok`, `message`,
-`dispatched`) korunur; Worker içindeki `readConfig()` / PUT / dispatch çağrıları DB
+Formun gönderdiği alanlar (`zip`, `mode`, `email`, kaldırma için `action:"remove"`) ve yanıt
+biçimi (`ok`, `message`, `dispatched`) korunur; Worker içindeki `readConfig()` / PUT / dispatch çağrıları DB
 yazmasıyla değiştirilir. Böylece kullanıcı arayüzüne dokunmak gerekmez.
 
 ## 5) Güvenlik notları
