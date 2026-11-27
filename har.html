@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>HAR Watch - Otomasyon Kur</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -17,6 +18,7 @@
             border:1px solid #dcdde1; border-radius:8px; background:#fbfcfd;
         }
         .field input:focus, .field select:focus { outline:2px solid #007bff33; border-color:#007bff; }
+        .field-hint { font-size:12px; color:#7f8c8d; margin-top:5px; line-height:1.4; }
         .row { display:flex; gap:16px; }
         .row .field { flex:1; }
         button.submit {
@@ -29,10 +31,6 @@
         .status.ok { display:block; background:#eaf7ef; color:#1e7e43; border:1px solid #bfe6cd; }
         .status.err { display:block; background:#fdecec; color:#b42318; border:1px solid #f5c2c2; }
         .har-note { font-size:13px; color:#7f8c8d; line-height:1.6; margin-top:20px; }
-        details.advanced { margin-top:22px; font-size:13px; color:#7f8c8d; }
-        details.advanced summary { cursor:pointer; font-weight:600; }
-        details.advanced .field { margin-top:14px; }
-        details.advanced button { padding:9px 16px; border:1px solid #dcdde1; background:#fff; border-radius:6px; cursor:pointer; }
         table.har-list { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
         table.har-list th, table.har-list td { padding:9px; border-bottom:1px solid #ecf0f1; text-align:left; }
         table.har-list th { color:#7f8c8d; font-size:12px; text-transform:uppercase; }
@@ -60,7 +58,7 @@
                 <div class="row">
                     <div class="field">
                         <label for="zip">ZIP kodu</label>
-                        <input id="zip" name="zip" type="text" value="77304" placeholder="örn. 78626" required>
+                        <input id="zip" name="zip" type="text" value="77304" placeholder="örn. 78626" inputmode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" required>
                     </div>
                     <div class="field">
                         <label for="mode">İlan tipi</label>
@@ -75,29 +73,15 @@
                     <input id="email" name="email" type="email" value="enformatiker@gmail.com" required>
                 </div>
                 <div class="field">
-                    <label for="accessCode">Erişim kodu (demo)</label>
-                    <input id="accessCode" name="accessCode" type="password" placeholder="Worker'da ACCESS_CODE varsa gir">
+                    <label for="accessCode">Erişim kodu (zorunlu)</label>
+                    <input id="accessCode" name="accessCode" type="password" autocomplete="off" placeholder="Worker ACCESS_CODE değeri" required>
+                    <div class="field-hint">Kod yalnızca bu sekmede tutulur; tarayıcı kapatılınca silinir. API adresi <code>site.config.js</code> içinden yönetilir, tarayıcıdan değiştirilemez.</div>
                 </div>
-                <button class="submit" id="submitBtn" type="submit">Otomasyonu kur ve test maili gönder</button>
+                <button class="submit" id="submitBtn" type="submit">Erişim kodu ile otomasyon kur</button>
             </form>
 
             <div id="status" class="status"></div>
-
-            <details class="advanced">
-                <summary>Gelişmiş: API adresi (domain değişince)</summary>
-                <div class="field">
-                    <label for="apiBaseInput">Worker adresi</label>
-                    <input id="apiBaseInput" type="text" placeholder="https://api.ornek.com veya boş (aynı origin)">
-                    <button type="button" id="saveApi">Tarayıcıya kaydet</button>
-                </div>
-                Kalıcı ayar için <code>site.config.js</code> dosyasını düzenle; detaylar <code>DOMAIN-SETUP.md</code> içinde.
-            </details>
-
-            <p class="har-note" id="harNote">
-                Demo sürümde gönderen ve varsayılan alıcı <strong>enformatiker@gmail.com</strong>'dur.
-                Aynı ZIP/mod için tekrar gönderirsen kayıt güncellenir, yeni bir otomasyon eklenmez.
-                Rapor; kalkan ilanlar, fiyat/değişiklikler, Active → Under Contract, kategori bazında tüm ilanlar ve fotoğrafları içerir.
-            </p>
+            <p class="har-note" id="harNote"></p>
         </div>
 
         <div class="har-card" style="margin-top:20px">
@@ -105,10 +89,7 @@
             <table class="har-list">
                 <thead><tr><th>ZIP</th><th>Mod</th><th>E-posta</th><th>Durum</th></tr></thead>
                 <tbody id="automationRows">
-                    <tr><td>77304</td><td><span class="badge">Kiralık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
-                    <tr><td>78626</td><td><span class="badge">Kiralık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
-                    <tr><td>77304</td><td><span class="badge sale">Satılık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
-                    <tr><td>78626</td><td><span class="badge sale">Satılık</span></td><td>enformatiker@gmail.com</td><td>Aktif</td></tr>
+                    <tr><td colspan="4">Listeyi görmek için erişim kodu girin.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -120,41 +101,41 @@
 
     <script src="site.config.js"></script>
     <script>
-        // Tek kaynak: site.config.js. ?worker= veya tarayıcıya kaydedilen adres bunu ezebilir (test için).
+        // API adresi yalnızca site.config.js'den gelir; ?worker= / localStorage ezmesi kaldırıldı.
         const cfg = window.HAR_SITE_CONFIG || {};
-        const params = new URLSearchParams(location.search);
-        const rawBase = params.get("worker") || localStorage.getItem("har_api_base") || cfg.apiBase || "";
-        const isPlaceholder = rawBase.indexOf("YOUR_SUBDOMAIN") !== -1;
-        let apiReady = !isPlaceholder; // boş apiBase = aynı origin (/api/* route'u), o da geçerli
-        let apiBase = rawBase.replace(/\/$/, "");
+        const apiBase = String(cfg.apiBase || "").trim().replace(/\/$/, "");
+        const isPlaceholder = /YOUR_SUBDOMAIN|example\.com/i.test(apiBase);
+        const apiReady = !isPlaceholder; // boş apiBase = aynı origin (/api/* route'u)
 
         if (cfg.siteName) {
             document.getElementById("siteLogo").textContent = cfg.siteName;
             document.title = cfg.siteName + " - Otomasyon Kur";
         }
-        if (cfg.supportEmail) {
-            document.getElementById("harNote").innerHTML =
-                document.getElementById("harNote").innerHTML.replace(
-                    "enformatiker@gmail.com",
-                    cfg.supportEmail
-                );
-        }
+        document.getElementById("harNote").textContent =
+            "Gönderen ve alıcı: " + (cfg.supportEmail || "enformatiker@gmail.com") + ". " +
+            "Aynı ZIP/mod için tekrar gönderirsen kayıt güncellenir, yeni otomasyon eklenmez; " +
+            "1 dakika içinde tekrar gönderim kabul edilmez. Rapor; kalkan ilanlar, fiyat/değişiklikler, " +
+            "Active → Under Contract, kategori bazında tüm ilanlar ve fotoğrafları içerir.";
         document.getElementById("siteFooter").textContent =
             "© " + new Date().getFullYear() + " " + (cfg.siteName || "HAR Watch") + ". Tüm hakları saklıdır.";
-
-        const apiInput = document.getElementById("apiBaseInput");
-        apiInput.value = isPlaceholder ? "" : apiBase;
-        document.getElementById("saveApi").addEventListener("click", () => {
-            apiBase = apiInput.value.trim().replace(/\/$/, "");
-            apiReady = true;
-            localStorage.setItem("har_api_base", apiBase);
-            showStatus("ok", "API adresi kaydedildi: " + (apiBase || "aynı origin"));
-            loadAutomations();
-        });
 
         const form = document.getElementById("harForm");
         const button = document.getElementById("submitBtn");
         const statusBox = document.getElementById("status");
+        const codeInput = document.getElementById("accessCode");
+        codeInput.value = sessionStorage.getItem("har_access_code") || "";
+
+        function accessCode() {
+            return codeInput.value.trim();
+        }
+
+        function authHeaders(withContentType) {
+            const headers = {};
+            if (withContentType) headers["Content-Type"] = "application/json";
+            const code = accessCode();
+            if (code) headers["x-access-code"] = code;
+            return headers;
+        }
 
         function showStatus(kind, text) {
             statusBox.className = "status " + kind;
@@ -164,44 +145,55 @@
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
             if (!apiReady) {
-                showStatus("err", "API adresi ayarlanmadı. Worker'ı deploy edip adresi Gelişmiş bölümüne gir veya site.config.js dosyasını düzenle.");
+                showStatus("err", "API adresi site.config.js içinde tanımlı değil.");
+                return;
+            }
+            if (!accessCode()) {
+                showStatus("err", "Erişim kodu gerekli.");
+                codeInput.focus();
+                return;
+            }
+            const zip = document.getElementById("zip").value.trim();
+            if (!/^\d{5}(-\d{4})?$/.test(zip)) {
+                showStatus("err", "ZIP kodu 5 haneli olmalı (örn. 77304).");
                 return;
             }
             showStatus("", "Otomasyon kuruluyor...");
             button.disabled = true;
 
             const payload = {
-                zip: document.getElementById("zip").value.trim(),
+                zip: zip,
                 mode: document.getElementById("mode").value,
                 email: document.getElementById("email").value.trim()
             };
-            const accessCode = document.getElementById("accessCode").value.trim();
-            const headers = { "Content-Type": "application/json" };
-            if (accessCode) headers["x-access-code"] = accessCode;
-
             try {
                 const response = await fetch(apiBase + "/api/automations", {
                     method: "POST",
-                    headers,
-                    body: JSON.stringify(payload)
+                    headers: authHeaders(true),
+                    body: JSON.stringify(payload),
+                    cache: "no-store"
                 });
                 const data = await response.json();
                 if (!response.ok || !data.ok) {
-                    throw new Error(data.error || "HTTP " + response.status);
+                    throw new Error(String(data.error || "HTTP " + response.status).slice(0, 200));
                 }
-                showStatus("ok", data.message + (data.dispatched ? " İlk mail birkaç saniye içinde gelir." : " Not: " + data.warning));
+                sessionStorage.setItem("har_access_code", accessCode());
+                showStatus("ok", data.message + " İlk rapor birkaç saniye içinde gelir.");
                 loadAutomations();
             } catch (error) {
-                showStatus("err", "Kurulamadı: " + error.message + " (API adresi doğru mu?)");
+                showStatus("err", "Kurulamadı: " + error.message);
             } finally {
                 button.disabled = false;
             }
         });
 
         async function loadAutomations() {
-            if (!apiReady) return; // demo: statik tabloyu göster
+            if (!apiReady || !accessCode()) return; // kodsuz liste isteği yapılmaz
             try {
-                const response = await fetch(apiBase + "/api/automations");
+                const response = await fetch(apiBase + "/api/automations", {
+                    headers: authHeaders(false),
+                    cache: "no-store"
+                });
                 const data = await response.json();
                 if (!response.ok || !data.ok || !Array.isArray(data.automations)) return;
                 const rows = data.automations
@@ -235,11 +227,11 @@
                     rows.forEach((row) => body.appendChild(row));
                 }
             } catch (error) {
-                // Worker henüz yoksa statik liste kalır; sessizce geç.
+                // Kodsuz/statik görünüm korunur; hata kullanıcıya gösterilmez.
             }
         }
 
-        loadAutomations();
+        if (accessCode()) loadAutomations();
     </script>
 </body>
 </html>

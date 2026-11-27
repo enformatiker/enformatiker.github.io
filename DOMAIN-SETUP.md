@@ -10,7 +10,7 @@ taşımak. Tüm adres/marka ayarları tek dosyada: [`site.config.js`](site.confi
 |---|---|---|
 | Site (statik) | GitHub Pages: `enformatiker.github.io/har.html` | Form, marka ve liste burada |
 | Ayar dosyası | `site.config.js` | `apiBase`, `siteName`, `supportEmail` |
-| API köprüsü | Cloudflare Worker (henüz deploy edilmedi) | `har-rental-watcher/worker/index.js` |
+| API köprüsü | Cloudflare Worker: `har-control.enformatiker.workers.dev` | `har-rental-watcher/worker/index.js` |
 | Otomasyonlar | `har-watch` repo → `automations.json` | Worker buraya yazar |
 | Cron / mail | `har-watch-config.yml` → `har_watch.py` | 6 saatte bir + ilk kurulumda hemen |
 
@@ -34,8 +34,8 @@ GitHub → Settings → Developer settings → Personal access tokens → **Fine
 2. `har-rental-watcher/worker/index.js` dosyasının tüm içeriğini editöre yapıştır, **Deploy**.
 3. Worker → **Settings → Variables and Secrets** → Add:
    - `GITHUB_TOKEN` = (2.1'deki token) → **Secret**
-   - `ACCESS_CODE` = demo kodu (örn. `HARDEMO`) → **Secret** (opsiyonel)
-   - `ALLOWED_ORIGIN` = site adresi (örn. `https://enformatiker.github.io`) → **Secret** (opsiyonel; kendi domaine geçince mutlaka ekle)
+   - `ACCESS_CODE` = güçlü rastgele kod → **Secret** (**zorunlu**; site formunda girilir)
+   - `ALLOWED_ORIGIN` = site adresi (örn. `https://enformatiker.github.io`) → **Secret** (**zorunlu**; birden fazla origin virgülle ayrılır)
 4. Çıkan adresi kopyala: `https://har-control.〈subdomain〉.workers.dev`.
 
 **Yol B — Wrangler CLI (Node kuruluysa):**
@@ -56,8 +56,8 @@ npx wrangler deploy
 apiBase: "https://har-control.〈subdomain〉.workers.dev",
 ```
 
-değişip push et. (Geçici test için adresi `?worker=https://...` ile veya paneldeki
-**Gelişmiş: API adresi** kutusuyla da verebilirsin; tarayıcıya kaydedilir.)
+değişip push et. API adresi artık **yalnızca bu dosyadan** okunur; `?worker=...` parametresi
+ve tarayıcıya kaydetme seçeneği, erişim kodu sızıntısını önlemek için kaldırıldı.
 
 Doğrulama:
 
@@ -114,5 +114,9 @@ yazmasıyla değiştirilir. Böylece kullanıcı arayüzüne dokunmak gerekmez.
 ## 5) Güvenlik notları
 
 - Token'ı asla repoya veya `site.config.js` içine yazma; Worker secret'i olarak tut.
-- Kendi domaine geçince `ALLOWED_ORIGIN`'i **mutlaka** ayarla ve demo `ACCESS_CODE`'u değiştir.
-- Başka birine token verdiysen hemen iptal edip yenisini üret.
+- `ACCESS_CODE` ve `ALLOWED_ORIGIN` **zorunlu**; biri eksikse `/api/*` istekleri reddedilir.
+  Erişim kodu panelde girilir ve yalnızca sekme boyunca `sessionStorage`'da tutulur.
+- Alıcı `ALLOWED_EMAILS` allowlist'iyle sınırlıdır (varsayılan `enformatiker@gmail.com`);
+  kodsuz biri Worker'ı üçüncü kişilere mail göndermek için kullanamaz.
+- Kendi domaine geçince `ALLOWED_ORIGIN`'i yeni adresle değiştir; eski demo kodunu asla kullanma.
+- Başka birine token veya erişim kodu verdiysen hemen iptal edip yenisini üret.
